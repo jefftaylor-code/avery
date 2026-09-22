@@ -194,3 +194,13 @@ def chat(request: ChatRequest):
     return {
         "reply": response.output_text
     }
+
+@app.get("/memories/{user_id}")
+def memory_inspector(user_id: str):
+    memories = get_memories(user_id)
+
+    return {
+        "user_id": user_id,
+        "memories": memories
+    }
+

@@ -9,17 +9,27 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 900px;
             margin: 40px auto;
             padding: 0 20px;
         }
 
         #chat {
             border: 1px solid #ccc;
-            height: 500px;
+            height: 400px;
             overflow-y: auto;
             padding: 15px;
             margin-bottom: 15px;
+        }
+
+        #memoryInspector {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        #memoryList {
+            margin-bottom: 0;
         }
 
         .message {
@@ -61,6 +71,11 @@
     </select>
 </div>
 
+<div id="memoryInspector">
+    <strong>What Avery remembers about this user</strong>
+    <ul id="memoryList"></ul>
+</div>
+
 <div id="chat"></div>
 
 <input
@@ -92,6 +107,43 @@ function getCurrentUserId() {
 }
 
 
+async function loadMemories() {
+
+    const userId = getCurrentUserId();
+    const memoryList = document.getElementById("memoryList");
+
+    memoryList.innerHTML = "<li>Loading...</li>";
+
+    try {
+
+        const response = await fetch(`/memories/${userId}`);
+        const data = await response.json();
+
+        memoryList.innerHTML = "";
+
+        if (data.memories.length === 0) {
+            memoryList.innerHTML = "<li>No stored memories.</li>";
+            return;
+        }
+
+        for (const memory of data.memories) {
+
+            const item = document.createElement("li");
+
+            item.textContent = memory;
+
+            memoryList.appendChild(item);
+        }
+
+    } catch (error) {
+
+        memoryList.innerHTML = `
+            <li>Error loading memories: ${escapeHtml(error.toString())}</li>
+        `;
+    }
+}
+
+
 function switchUser() {
 
     const chat = document.getElementById("chat");
@@ -117,6 +169,8 @@ function switchUser() {
             </div>
         `;
     }
+
+    loadMemories();
 }
 
 
@@ -181,6 +235,8 @@ async function sendMessage() {
 
         chat.scrollTop = chat.scrollHeight;
 
+        loadMemories();
+
     } catch (error) {
 
         chat.innerHTML += `
@@ -211,6 +267,9 @@ document
             sendMessage();
         }
     });
+
+
+loadMemories();
 
 </script>
 
