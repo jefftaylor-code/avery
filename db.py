@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 
@@ -13,7 +14,7 @@ def get_connection():
 
 
 def init_db():
-    with get_connection() as conn:
+     with closing(get_connection()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -35,7 +36,7 @@ def init_db():
 
 
 def add_user(user_id, display_name):
-    with get_connection() as conn:
+     with closing(get_connection()) as conn:
         conn.execute(
             """
             INSERT OR IGNORE INTO users (id, display_name)
@@ -47,7 +48,7 @@ def add_user(user_id, display_name):
 
 
 def add_memory(user_id, memory):
-    with get_connection() as conn:
+     with closing(get_connection()) as conn:
         conn.execute(
             """
             INSERT INTO memories (user_id, memory)
@@ -58,7 +59,7 @@ def add_memory(user_id, memory):
         conn.commit()
 
 def add_memory_if_new(user_id, memory):
-    with get_connection() as conn:
+     with closing(get_connection()) as conn:
         existing = conn.execute(
             """
             SELECT 1
@@ -84,7 +85,7 @@ def add_memory_if_new(user_id, memory):
 
 
 def get_memories(user_id):
-    with get_connection() as conn:
+    with closing(get_connection()) as conn:
         rows = conn.execute(
             """
             SELECT memory
