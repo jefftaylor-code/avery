@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Avery — Persistent Character Lab</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        #chat {
+            border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        #memoryInspector {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        #memoryList {
+            margin-bottom: 0;
+        }
+
+        .message {
+            margin-bottom: 15px;
+        }
+
+        .user,
+        .avery {
+            font-weight: bold;
+        }
+
+        #message {
+            width: 72%;
+            padding: 10px;
+        }
+
+        button,
+        select {
+            padding: 10px;
+        }
+
+        #userControls {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Avery</h1>
+<p>Persistent Character Lab — Gate 0</p>
+
+<div id="userControls">
+    <label for="userSelect"><strong>Current user:</strong></label>
+
+    <select id="userSelect" onchange="switchUser()">
+        <option value="jeff">Jeff</option>
+        <option value="testuser2">Test User 2</option>
+    </select>
+</div>
+
+<div id="memoryInspector">
+    <strong>What Avery remembers about this user</strong>
+    <ul id="memoryList"></ul>
+</div>
+
+<div id="chat"></div>
+
+<input
+    id="message"
+    type="text"
+    placeholder="Talk to Avery..."
+    autofocus
+>
+
+<button onclick="sendMessage()">Send</button>
+
+<script>
+
+const users = {
+    jeff: {
+        displayName: "Jeff",
+        history: []
+    },
+
+    testuser2: {
+        displayName: "Test User 2",
+        history: []
+    }
+};
+
+
+function getCurrentUserId() {
+    return document.getElementById("userSelect").value;
+}
+
+
+async function loadMemories() {
+
+    const userId = getCurrentUserId();
+    const memoryList = document.getElementById("memoryList");
+
+    memoryList.innerHTML = "<li>Loading...</li>";
+
+    try {
+
+        const response = await fetch(`/memories/${userId}`);
+        const data = await response.json();
+
+        memoryList.innerHTML = "";
+
+        if (data.memories.length === 0) {
+            memoryList.innerHTML = "<li>No stored memories.</li>";
+            return;
+        }
+
+        for (const memory of data.memories) {
+
+            const item = document.createElement("li");
+
+            item.textContent = memory;
+
+            memoryList.appendChild(item);
+        }
+
+    } catch (error) {
+
+        memoryList.innerHTML = `
+            <li>Error loading memories: ${escapeHtml(error.toString())}</li>
+        `;
+    }
+}
+
+
+function switchUser() {
+
+    const chat = document.getElementById("chat");
+
+    chat.innerHTML = "";
+
+    const userId = getCurrentUserId();
+    const history = users[userId].history;
+
+    for (const item of history) {
+
+        const label =
+            item.role === "user"
+            ? "You"
+            : "Avery";
+
+        chat.innerHTML += `
+            <div class="message">
+                <span class="${item.role === "user" ? "user" : "avery"}">
+                    ${label}:
+                </span>
+                ${escapeHtml(item.content)}
+            </div>
+        `;
+    }
+
+    loadMemories();
+}
+
+
+async function sendMessage() {
+
+    const input = document.getElementById("message");
+    const chat = document.getElementById("chat");
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    const userId = getCurrentUserId();
+    const currentUser = users[userId];
+
+    chat.innerHTML += `
+        <div class="message">
+            <span class="user">You:</span>
+            ${escapeHtml(message)}
+        </div>
+    `;
+
+    input.value = "";
+
+    try {
+
+        const response = await fetch("/chat", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                user_id: userId,
+                display_name: currentUser.displayName,
+                message: message,
+                history: currentUser.history
+            })
+        });
+
+        const data = await response.json();
+
+        currentUser.history.push({
+            role: "user",
+            content: message
+        });
+
+        currentUser.history.push({
+            role: "assistant",
+            content: data.reply
+        });
+
+        chat.innerHTML += `
+            <div class="message">
+                <span class="avery">Avery:</span>
+                ${escapeHtml(data.reply)}
+            </div>
+        `;
+
+        chat.scrollTop = chat.scrollHeight;
+
+        loadMemories();
+
+    } catch (error) {
+
+        chat.innerHTML += `
+            <div class="message">
+                <strong>Error:</strong>
+                ${escapeHtml(error.toString())}
+            </div>
+        `;
+    }
+}
+
+
+function escapeHtml(text) {
+
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+}
+
+
+document
+    .getElementById("message")
+    .addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+    });
+
+
+loadMemories();
+
+</script>
+
+</body>
+</html>
